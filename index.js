@@ -29,8 +29,13 @@ async function getUserDetails(walletAddress) {
     }
 }
 
+// Delay function
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // Function to process the CSV file and write results to a new CSV file
-function processCSV(filePath, outputFilePath) {
+async function processCSV(filePath, outputFilePath, outputSQLFilePath) {
     const results = [];
     const outputData = [];
 
@@ -41,7 +46,11 @@ function processCSV(filePath, outputFilePath) {
             for (const row of results) {
                 const walletAddress = row.address;
                 if (walletAddress) {
-                    const userDetails = await getUserDetails(walletAddress);
+                    let userDetails = await getUserDetails(walletAddress);
+                    if (userDetails.statusCode && userDetails.statusCode !== 200) {
+                        await delay(1000); // Wait 1 second if the request failed
+                        userDetails = await getUserDetails(walletAddress); // Retry the request
+                    }
                     console.log(`Address: ${walletAddress}, OpenseaUsername: ${userDetails.username}, ProfileImageURL: ${userDetails.profile_image_url}, Bio: ${userDetails.bio}`);
                     outputData.push({
                         address: walletAddress,
@@ -49,6 +58,7 @@ function processCSV(filePath, outputFilePath) {
                         profile_image_url: userDetails.profile_image_url,
                         bio: userDetails.bio
                     });
+                    await delay(200); // Wait 0.2 seconds between each request
                 }
             }
 
@@ -61,12 +71,24 @@ function processCSV(filePath, outputFilePath) {
                     console.log(`Results written to ${outputFilePath}`);
                 }
             });
+
+            // Generate SQL insert statement, if you need
+            let sqlString = "INSERT INTO `table` (`address`, `avatar_url`, `name`, `bio`) VALUES ";
+            for (let i = 0; i < outputData.length; i++) {
+                if (i != 0) {
+                    sqlString += `, `;
+                }
+                sqlString += `('${outputData[i].address}', '${outputData[i].profile_image_url}', '${outputData[i].username}', '${outputData[i].bio}')`;
+            }
+            fs.writeFileSync(outputSQLFilePath, sqlString);
+            console.log(`SQL Insert statements written to ${outputSQLFilePath}`);
         });
 }
 
 // Path to the CSV file
 const csvFilePath = 'input.csv';
 const outputFilePath = 'output.csv';
+const outputSQLFilePath = 'output.sql';
 
 // Start processing the CSV file
-processCSV(csvFilePath, outputFilePath);
+processCSV(csvFilePath, outputFilePath, outputSQLFilePath);

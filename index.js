@@ -13,18 +13,19 @@ if (!OPENSEA_API_KEY) {
     process.exit(1);
 }
 
-// Function to get username from OpenSea API
-async function getUsername(walletAddress) {
+// Function to get user details from OpenSea API
+async function getUserDetails(walletAddress) {
     try {
         const response = await axios.get(`https://api.opensea.io/api/v2/accounts/${walletAddress}`, {
             headers: {
                 'X-API-KEY': OPENSEA_API_KEY
             }
         });
-        return response.data.username;
+        const { username, profile_image_url, bio } = response.data;
+        return { username, profile_image_url, bio };
     } catch (error) {
-        console.error(`Error fetching username for wallet address ${walletAddress}:`, error.response ? error.response.data : error.message);
-        return null;
+        console.error(`Error fetching details for wallet address ${walletAddress}:`, error.response ? error.response.data : error.message);
+        return { username: null, profile_image_url: null, bio: null };
     }
 }
 
@@ -40,9 +41,14 @@ function processCSV(filePath, outputFilePath) {
             for (const row of results) {
                 const walletAddress = row.address;
                 if (walletAddress) {
-                    const username = await getUsername(walletAddress);
-                    console.log(`Address: ${walletAddress}, OpenseaUsername: ${username}`);
-                    outputData.push({ address: walletAddress, username: username });
+                    const userDetails = await getUserDetails(walletAddress);
+                    console.log(`Address: ${walletAddress}, OpenseaUsername: ${userDetails.username}, ProfileImageURL: ${userDetails.profile_image_url}, Bio: ${userDetails.bio}`);
+                    outputData.push({
+                        address: walletAddress,
+                        username: userDetails.username,
+                        profile_image_url: userDetails.profile_image_url,
+                        bio: userDetails.bio
+                    });
                 }
             }
 

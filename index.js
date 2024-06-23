@@ -2,6 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const csv = require('csv-parser');
 const axios = require('axios');
+const { stringify } = require('csv-stringify');
 
 // Read the OpenSea API key from the environment variables
 const OPENSEA_API_KEY = process.env.OPENSEA_API_KEY;
@@ -27,9 +28,10 @@ async function getUsername(walletAddress) {
     }
 }
 
-// Function to process the CSV file
-function processCSV(filePath) {
+// Function to process the CSV file and write results to a new CSV file
+function processCSV(filePath, outputFilePath) {
     const results = [];
+    const outputData = [];
 
     fs.createReadStream(filePath)
         .pipe(csv())
@@ -39,14 +41,26 @@ function processCSV(filePath) {
                 const walletAddress = row.address;
                 if (walletAddress) {
                     const username = await getUsername(walletAddress);
-                    console.log(`Address: ${walletAddress}, Username: ${username}`);
+                    console.log(`Address: ${walletAddress}, OpenseaUsername: ${username}`);
+                    outputData.push({ address: walletAddress, username: username });
                 }
             }
+
+            // Write the results to the output CSV file
+            stringify(outputData, { header: true }, (err, output) => {
+                if (err) {
+                    console.error('Error writing to CSV file:', err);
+                } else {
+                    fs.writeFileSync(outputFilePath, output);
+                    console.log(`Results written to ${outputFilePath}`);
+                }
+            });
         });
 }
 
 // Path to the CSV file
 const csvFilePath = 'input.csv';
+const outputFilePath = 'output.csv';
 
 // Start processing the CSV file
-processCSV(csvFilePath);
+processCSV(csvFilePath, outputFilePath);

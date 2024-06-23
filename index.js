@@ -73,12 +73,25 @@ async function processCSV(filePath, outputFilePath, outputSQLFilePath) {
             });
 
             // Generate SQL insert statement, if you need
+
+            // Helper function to escape SQL values
+            function escapeSQL(value) {
+                if (typeof value === 'string') {
+                    return value
+                        .replace(/\\/g, '\\\\')
+                        .replace(/'/g, "\\'")
+                        .replace(/"/g, '\\"');
+                }
+                return value;
+            }
+
+            // Inside the processCSV function, where you generate the SQL string
             let sqlString = "INSERT INTO `table` (`address`, `avatar_url`, `name`, `bio`) VALUES ";
             for (let i = 0; i < outputData.length; i++) {
                 if (i != 0) {
                     sqlString += `, `;
                 }
-                sqlString += `('${outputData[i].address}', '${outputData[i].profile_image_url}', '${outputData[i].username}', '${outputData[i].bio}')`;
+                sqlString += `('${escapeSQL(outputData[i].address)}', '${escapeSQL(outputData[i].profile_image_url)}', '${escapeSQL(outputData[i].username)}', '${escapeSQL(outputData[i].bio)}')`;
             }
             fs.writeFileSync(outputSQLFilePath, sqlString);
             console.log(`SQL Insert statements written to ${outputSQLFilePath}`);
